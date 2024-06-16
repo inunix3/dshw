@@ -1,0 +1,18 @@
+[package]
+name = "dshw"
+description = "A dead simple CLI program to query information about system and hardware."
+authors = ["inunix3 <inu.nix3@gmail.com>"]
+keywords = ["system-information", "disk", "cpu", "memory"]
+categories = ["command-line-utilities"]
+license = "MIT"
+version = "0.1.0"
+readme = "README.md"
+repository = "https://github.com/inunix3/dshw"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.86"
+clap = { version = "4.5.7", features = ["derive"] }
+serde = { version = "1.0.203", features = ["derive"] }
+sysinfo = "0.30.12"
+unescaper = "0.1.4"
