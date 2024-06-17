@@ -17,14 +17,14 @@ fn main() -> Result<()> {
         eprintln!("Warning: this OS is not supported; some stats might be inaccurate/invalid.")
     }
 
-    let mut output: Vec<String> = vec![];
-    cli.cmd.exec(&mut output)?;
+    let mut data: Vec<String> = vec![];
+    cli.cmd.exec(&mut data)?;
 
-    for (i, l) in output.iter().enumerate() {
-        if i < output.len() - 1 {
-            print!("{}{}", l, delimiter)
+    for (i, d) in data.iter().enumerate() {
+        if i < data.len() - 1 {
+            print!("{}{}", d, delimiter)
         } else {
-            println!("{}", l)
+            println!("{}", d)
         }
     }
 
