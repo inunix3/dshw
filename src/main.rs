@@ -46,6 +46,23 @@ enum OsQuery {
     HostName,
 }
 
+impl OsQuery {
+    fn exec(self) -> String {
+        match self {
+            OsQuery::BootTime => System::boot_time().to_string(),
+            OsQuery::LoadAverage1m => format!("{:.2}", System::load_average().one),
+            OsQuery::LoadAverage5m => format!("{:.2}", System::load_average().five),
+            OsQuery::LoadAverage15m => format!("{:.2}", System::load_average().fifteen),
+            OsQuery::Name => System::name().unwrap_or_default(),
+            OsQuery::KernelVersion => System::kernel_version().unwrap_or_default(),
+            OsQuery::Version => System::os_version().unwrap_or_default(),
+            OsQuery::LongVersion => System::long_os_version().unwrap_or_default(),
+            OsQuery::ReleaseId => System::distribution_id(),
+            OsQuery::HostName => System::host_name().unwrap_or_default(),
+        }
+    }
+}
+
 #[derive(Debug, ValueEnum, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum CpuQuery {
@@ -57,6 +74,17 @@ enum CpuQuery {
     Brand,
     /// ID of CPU's vendor.
     VendorId,
+}
+
+impl CpuQuery {
+    fn exec(self, cpu: &Cpu) -> String {
+        match self {
+            CpuQuery::Usage => format!("{:.2}", cpu.cpu_usage()),
+            CpuQuery::Frequency => cpu.frequency().to_string(),
+            CpuQuery::Brand => cpu.brand().to_string(),
+            CpuQuery::VendorId => cpu.vendor_id().to_string(),
+        }
+    }
 }
 
 #[derive(Debug, ValueEnum, Clone, Serialize)]
@@ -72,6 +100,18 @@ enum MemoryQuery {
     Reusable,
 }
 
+impl MemoryQuery {
+    fn exec(self, sys: &System) -> String {
+        match self {
+            MemoryQuery::Usage => sys.used_memory(),
+            MemoryQuery::Total => sys.total_memory(),
+            MemoryQuery::Available => sys.available_memory(),
+            MemoryQuery::Reusable => sys.free_memory(),
+        }
+        .to_string()
+    }
+}
+
 #[derive(Debug, ValueEnum, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum SwapQuery {
@@ -81,6 +121,17 @@ enum SwapQuery {
     Total,
     /// Available swap memory (bytes).
     Available,
+}
+
+impl SwapQuery {
+    fn exec(self, sys: &System) -> String {
+        match self {
+            SwapQuery::Usage => sys.used_swap(),
+            SwapQuery::Total => sys.total_swap(),
+            SwapQuery::Available => sys.free_swap(),
+        }
+        .to_string()
+    }
 }
 
 #[derive(Debug, ValueEnum, Clone, Serialize)]
@@ -102,6 +153,24 @@ enum DriveQuery {
     Available,
 }
 
+impl DriveQuery {
+    fn exec(self, disk: &Disk) -> String {
+        let total_space = disk.total_space();
+        let avail_space = disk.available_space();
+        let used_space = total_space - avail_space;
+
+        match self {
+            DriveQuery::Usage => used_space.to_string(),
+            DriveQuery::Fs => format!("{}", disk.file_system().to_string_lossy()),
+            DriveQuery::IsRemovable => format!("{}", disk.is_removable() as i32),
+            DriveQuery::Kind => disk.kind().to_string(),
+            DriveQuery::MountPoint => format!("{}", disk.mount_point().to_string_lossy()),
+            DriveQuery::Total => total_space.to_string(),
+            DriveQuery::Available => avail_space.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, ValueEnum, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 enum SensorQuery {
@@ -113,6 +182,19 @@ enum SensorQuery {
     MaxTemp,
     /// Current sensor's temperature (Celsius, floating-point number with 2 decimal places).
     Temperature,
+}
+
+impl SensorQuery {
+    fn exec(self, sensor: &Component) -> String {
+        match self {
+            SensorQuery::CriticalTemp => sensor
+                .critical()
+                .map(|t| format!("{:.2}", t))
+                .unwrap_or_default(),
+            SensorQuery::MaxTemp => format!("{:.2}", sensor.max()),
+            SensorQuery::Temperature => format!("{:.2}", sensor.temperature()),
+        }
+    }
 }
 
 #[derive(Subcommand, Debug)]
@@ -157,217 +239,124 @@ enum Command {
     TotalCpuUsage,
 }
 
-fn handle_os(queries: Vec<OsQuery>) -> Vec<String> {
-    let mut output: Vec<String> = vec![];
+impl Command {
+    fn exec(self, output: &mut Vec<String>) -> Result<()> {
+        let mut sys = System::new();
 
-    for q in queries {
-        let line = match q {
-            OsQuery::BootTime => System::boot_time().to_string(),
-            OsQuery::LoadAverage1m => format!("{:.2}", System::load_average().one),
-            OsQuery::LoadAverage5m => format!("{:.2}", System::load_average().five),
-            OsQuery::LoadAverage15m => format!("{:.2}", System::load_average().fifteen),
-            OsQuery::Name => System::name().unwrap_or_default(),
-            OsQuery::KernelVersion => System::kernel_version().unwrap_or_default(),
-            OsQuery::Version => System::os_version().unwrap_or_default(),
-            OsQuery::LongVersion => System::long_os_version().unwrap_or_default(),
-            OsQuery::ReleaseId => System::distribution_id(),
-            OsQuery::HostName => System::host_name().unwrap_or_default(),
-        };
+        match self {
+            Command::Os { queries } => {
+                for q in queries {
+                    output.push(q.exec())
+                }
+            }
+            Command::Cpu { name, queries } => {
+                sys.refresh_cpu();
 
-        output.push(line)
-    }
+                std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+                sys.refresh_cpu();
 
-    output
-}
+                let cpus = sys.cpus();
 
-fn handle_cpu(cpu: &Cpu, queries: Vec<CpuQuery>) -> Vec<String> {
-    let mut output: Vec<String> = vec![];
+                let cpu = cpus
+                    .iter()
+                    .find(|c| c.name() == name.as_str())
+                    .with_context(|| format!("cpu '{}' not found", name))?;
 
-    for q in queries {
-        let line = match q {
-            CpuQuery::Usage => format!("{:.2}", cpu.cpu_usage()),
-            CpuQuery::Frequency => cpu.frequency().to_string(),
-            CpuQuery::Brand => cpu.brand().to_string(),
-            CpuQuery::VendorId => cpu.vendor_id().to_string(),
-        };
+                for q in queries {
+                    output.push(q.exec(cpu))
+                }
+            }
+            Command::Memory { queries } => {
+                sys.refresh_memory();
 
-        output.push(line)
-    }
+                for q in queries {
+                    output.push(q.exec(&sys))
+                }
+            }
+            Command::Swap { queries } => {
+                sys.refresh_memory();
 
-    output
-}
+                for q in queries {
+                    output.push(q.exec(&sys))
+                }
+            }
+            Command::Drive { name, queries } => {
+                let disks = Disks::new_with_refreshed_list();
 
-fn handle_memory(sys: System, queries: Vec<MemoryQuery>) -> Vec<String> {
-    let mut output: Vec<String> = vec![];
+                let disk = disks
+                    .list()
+                    .iter()
+                    .find(|d| d.name() == name.as_str())
+                    .with_context(|| format!("disk '{}' not found", name))?;
 
-    for q in queries {
-        let line = match q {
-            MemoryQuery::Usage => sys.used_memory(),
-            MemoryQuery::Total => sys.total_memory(),
-            MemoryQuery::Available => sys.available_memory(),
-            MemoryQuery::Reusable => sys.free_memory(),
+                for q in queries {
+                    output.push(q.exec(disk))
+                }
+            }
+            Command::Sensor { name, queries } => {
+                let components = Components::new_with_refreshed_list();
+
+                let sensor = components
+                    .iter()
+                    .find(|c| c.label() == name)
+                    .with_context(|| format!("sensor '{}' not found", name))?;
+
+                for q in queries {
+                    output.push(q.exec(sensor))
+                }
+            }
+            Command::ListSensors => {
+                let components = Components::new_with_refreshed_list();
+
+                for c in &components {
+                    output.push(c.label().to_string())
+                }
+            }
+            Command::ListCpus => {
+                sys.refresh_cpu();
+
+                for c in sys.cpus() {
+                    output.push(c.name().to_string())
+                }
+            }
+            // If the physical core count cannot be queried, an empty string is printed.
+            Command::PhysicalCoreCount => {
+                let count = sys
+                    .physical_core_count()
+                    .map(|c| c.to_string())
+                    .unwrap_or_default();
+
+                output.push(count.to_string())
+            }
+            Command::TotalCpuUsage => {
+                sys.refresh_cpu();
+
+                std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+                sys.refresh_cpu();
+
+                output.push(format!("{:.2}", sys.global_cpu_info().cpu_usage()))
+            }
         }
-        .to_string();
 
-        output.push(line)
+        Ok(())
     }
-
-    output
-}
-
-fn handle_swap(sys: System, queries: Vec<SwapQuery>) -> Vec<String> {
-    let mut output: Vec<String> = vec![];
-
-    for q in queries {
-        let line = match q {
-            SwapQuery::Usage => sys.used_swap(),
-            SwapQuery::Total => sys.total_swap(),
-            SwapQuery::Available => sys.free_swap(),
-        }
-        .to_string();
-
-        output.push(line)
-    }
-
-    output
-}
-
-fn handle_drive(disk: &Disk, queries: Vec<DriveQuery>) -> Vec<String> {
-    let mut output: Vec<String> = vec![];
-
-    let total_space = disk.total_space();
-    let avail_space = disk.available_space();
-    let used_space = total_space - avail_space;
-
-    for q in queries {
-        let line = match q {
-            DriveQuery::Usage => used_space.to_string(),
-            DriveQuery::Fs => format!("{}", disk.file_system().to_string_lossy()),
-            DriveQuery::IsRemovable => format!("{}", disk.is_removable() as i32),
-            DriveQuery::Kind => disk.kind().to_string(),
-            DriveQuery::MountPoint => format!("{}", disk.mount_point().to_string_lossy()),
-            DriveQuery::Total => total_space.to_string(),
-            DriveQuery::Available => avail_space.to_string(),
-        };
-
-        output.push(line)
-    }
-
-    output
-}
-
-fn handle_sensor(sensor: &Component, queries: Vec<SensorQuery>) -> Vec<String> {
-    let mut output: Vec<String> = vec![];
-
-    for q in queries {
-        // If the critical temperature cannot be queried, an empty string will be printed.
-        let critical_temp = sensor
-            .critical()
-            .map(|t| format!("{:.2}", t))
-            .unwrap_or_default();
-
-        let line = match q {
-            SensorQuery::CriticalTemp => critical_temp,
-            SensorQuery::MaxTemp => format!("{:.2}", sensor.max()),
-            SensorQuery::Temperature => format!("{:.2}", sensor.temperature()),
-        };
-
-        output.push(line);
-    }
-
-    output
 }
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let delimiter = unescape(&cli.delimiter)
-        .with_context(|| "invalid delimiter (are there invalid escape sequences?)")?;
+        .with_context(|| "invalid delimiter; are there any invalid escape sequences?")?;
 
     if !sysinfo::IS_SUPPORTED_SYSTEM {
         eprintln!("Warning: this OS is not supported; some stats might be inaccurate/invalid.")
     }
 
-    let mut sys = System::new();
+    let mut output: Vec<String> = vec![];
+    cli.cmd.exec(&mut output)?;
 
-    let lines = match cli.cmd {
-        Command::Os { queries } => handle_os(queries),
-        Command::Cpu { name, queries } => {
-            sys.refresh_cpu();
-
-            std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
-            sys.refresh_cpu();
-
-            let cpus = sys.cpus();
-
-            let cpu = cpus
-                .iter()
-                .find(|c| c.name() == name.as_str())
-                .with_context(|| format!("cpu '{}' not found", name))?;
-
-            handle_cpu(cpu, queries)
-        }
-        Command::Memory { queries } => {
-            sys.refresh_memory();
-
-            handle_memory(sys, queries)
-        }
-        Command::Swap { queries } => {
-            sys.refresh_memory();
-
-            handle_swap(sys, queries)
-        }
-        Command::Drive { name, queries } => {
-            let disks = Disks::new_with_refreshed_list();
-
-            let disk = disks
-                .list()
-                .iter()
-                .find(|d| d.name() == name.as_str())
-                .with_context(|| format!("disk '{}' not found", name))?;
-
-            handle_drive(disk, queries)
-        }
-        Command::Sensor { name, queries } => {
-            let components = Components::new_with_refreshed_list();
-
-            let sensor = components
-                .iter()
-                .find(|c| c.label() == name)
-                .with_context(|| format!("sensor '{}' not found", name))?;
-
-            handle_sensor(sensor, queries)
-        }
-        Command::ListSensors => Components::new_with_refreshed_list()
-            .iter()
-            .map(|c| c.label().to_string())
-            .collect(),
-        Command::ListCpus => {
-            sys.refresh_cpu();
-
-            sys.cpus().iter().map(|c| c.name().to_string()).collect()
-        }
-        // If the physical core count cannot be queried, an empty string is printed.
-        Command::PhysicalCoreCount => {
-            let count = sys
-                .physical_core_count()
-                .map(|c| c.to_string())
-                .unwrap_or_default();
-
-            vec![count.to_string()]
-        }
-        Command::TotalCpuUsage => {
-            sys.refresh_cpu();
-
-            std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
-            sys.refresh_cpu();
-
-            vec![format!("{:.2}", sys.global_cpu_info().cpu_usage())]
-        }
-    };
-
-    for (i, l) in lines.iter().enumerate() {
-        if i < lines.len() - 1 {
+    for (i, l) in output.iter().enumerate() {
+        if i < output.len() - 1 {
             print!("{}{}", l, delimiter)
         } else {
             println!("{}", l)
