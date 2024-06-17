@@ -20,7 +20,6 @@ default cargo dir will be) is in the `PATH` environment variable.
 To see all available options, pass `-h`, `--help` or `help`.
 
 ## TODO
-- [ ] (Internal) Make code cleaner (get rid of all that `handle_*` functions).
 - [ ] Add extra functionality like network.
 - [ ] Timing: measure stats within specified interval.
 - [ ] Add format option: something like `dshw drive '/dev/sda3' fmt '{usage}/{total} GiB'`
