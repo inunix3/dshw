@@ -25,15 +25,19 @@ pub struct Cli {
 #[derive(Debug, ValueEnum, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum OsQuery {
-    /// Time since the boot in the UNIX epoch format. If you want a readable format, see the `format`
-    /// command.
-    #[clap(verbatim_doc_comment)]
+    /// Time when the system booted since UNIX epoch (seconds).
     BootTime,
-    /// A load average within past 1 minute expressed as percents with 2 decimal places.
+    /// A load average within past 1 minute expressed as percentage, 2 decimal places.
+    /// On Windows, returns nothing.
+    #[clap(verbatim_doc_comment)]
     LoadAverage1m,
-    /// A load average within past 5 minutes expressed as percents with 2 decimal places.
+    /// A load average within past 5 minutes expressed as percentage, 2 decimal places.
+    /// On Windows, returns nothing.
+    #[clap(verbatim_doc_comment)]
     LoadAverage5m,
-    /// A load average within past 15 minutes expressed as percents with 2 decimal places.
+    /// A load average within past 15 minutes expressed as percentage, 2 decimal places.
+    /// On Windows, returns nothing.
+    #[clap(verbatim_doc_comment)]
     LoadAverage15m,
     /// The name of the OS. Returns nothing if not available.
     Name,
@@ -69,13 +73,13 @@ impl OsQuery {
 #[derive(Debug, ValueEnum, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum CpuQuery {
-    /// CPU usage (percentage with 2 decimal places).
+    /// CPU usage (percentage, 2 decimal places).
     Usage,
     /// The frequency of the CPU (the unit is not defined; can be MHz, GHz, etc).
     Frequency,
-    /// The brand of the CPU.
+    /// The brand of the CPU (e.g. "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz").
     Brand,
-    /// ID of CPU's vendor.
+    /// ID of CPU's vendor (e.g. "GenuineIntel").
     VendorId,
 }
 
@@ -97,10 +101,10 @@ pub enum MemoryQuery {
     Usage,
     /// Total memory capacity (bytes).
     Total,
-    /// Unallocated memory (bytes).
+    /// Reusable memory (bytes). On FreeBSD, it's the same as `free`.
     Available,
-    /// Memory which can be reused (bytes).
-    Reusable,
+    /// Unallocated memory (bytes). On Windows, it's the same as `available`.
+    Free,
 }
 
 impl MemoryQuery {
@@ -109,7 +113,7 @@ impl MemoryQuery {
             MemoryQuery::Usage => sys.used_memory(),
             MemoryQuery::Total => sys.total_memory(),
             MemoryQuery::Available => sys.available_memory(),
-            MemoryQuery::Reusable => sys.free_memory(),
+            MemoryQuery::Free => sys.free_memory(),
         }
         .to_string()
     }
@@ -144,11 +148,11 @@ pub enum DriveQuery {
     Usage,
     /// Drive's filesystem name.
     Fs,
-    /// Determine if the drive is removable (boolean).
+    /// Determine if the drive is removable (boolean, 1 or 0).
     IsRemovable,
-    /// The kind of the drive (Should be HDD or SSD)
+    /// The kind of the drive (Should be HDD or SSD, otherwise returns "Unknown").
     Kind,
-    /// The mount point.
+    /// The path where the drive is mounted.
     MountPoint,
     /// Total space (bytes).
     Total,
@@ -177,13 +181,13 @@ impl DriveQuery {
 #[derive(Debug, ValueEnum, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SensorQuery {
-    /// Sensor's critical temperature (Celsius, floating-point number with 2 decimal places). If
+    /// Sensor's critical temperature (Celsius, 2 decimal places). If
     /// not available, returns nothing
     #[clap(verbatim_doc_comment)]
     CriticalTemp,
-    /// Sensor's maximal temperature (Celsius, floating-point number with 2 decimal places).
+    /// Sensor's maximal temperature (Celsius, 2 decimal places).
     MaxTemp,
-    /// Current sensor's temperature (Celsius, floating-point number with 2 decimal places).
+    /// Current sensor's temperature (Celsius, 2 decimal places).
     Temperature,
 }
 
@@ -234,11 +238,11 @@ pub enum Command {
     ListSensors,
     /// List all available CPUs.
     ListCpus,
-    /// Count of physical cores. If not available, prints nothing. In case there are multiple CPUs,
+    /// Count of physical cores. If not available, returns nothing. In case there are multiple CPUs,
     /// it will combine the physical core count of all the CPUs.
     #[clap(verbatim_doc_comment)]
     PhysicalCoreCount,
-    /// Total CPU usage (percentage with 2 decimal places).
+    /// Total CPU usage (percentage, 2 decimal places).
     TotalCpuUsage,
 }
 
