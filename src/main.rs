@@ -1,3 +1,7 @@
+// Copyright (c) 2024 inunix3
+//
+// This file is licensed under the MIT License (see LICENSE.md).
+
 use anyhow::{Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use serde::Serialize;
