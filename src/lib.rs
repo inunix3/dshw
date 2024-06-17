@@ -244,6 +244,8 @@ pub enum Command {
     PhysicalCoreCount,
     /// Total CPU usage (percentage, 2 decimal places).
     TotalCpuUsage,
+    /// CPU Architecture (e.g. x86, amd64, aarch64, ...).
+    CpuArch,
 }
 
 impl Command {
@@ -343,6 +345,7 @@ impl Command {
 
                 output.push(format!("{:.2}", sys.global_cpu_info().cpu_usage()))
             }
+            Command::CpuArch => output.push(System::cpu_arch().unwrap_or_default()),
         }
 
         Ok(())
