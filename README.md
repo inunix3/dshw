@@ -23,7 +23,7 @@ To see all available options, pass `-h`, `--help` or `help`.
 - [ ] Add extra functionality like network.
 - [ ] Timing: measure stats within specified interval.
 - [ ] Add format option: something like `dshw drive '/dev/sda3' fmt '{usage}/{total} GiB'`
-- ...
+...
 
 ## Contribution
 If you have found a problem or have a suggestion, feel free to open an issue or send a pull request.
