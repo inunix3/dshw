@@ -27,15 +27,15 @@ pub struct Cli {
 pub enum OsQuery {
     /// Time when the system booted since UNIX epoch (seconds).
     BootTime,
-    /// A load average within past 1 minute expressed as percentage, 2 decimal places.
+    /// A load average within 1 minute expressed as percentage, 2 decimal places.
     /// On Windows, returns nothing.
     #[clap(verbatim_doc_comment)]
     LoadAverage1m,
-    /// A load average within past 5 minutes expressed as percentage, 2 decimal places.
+    /// A load average within 5 minutes expressed as percentage, 2 decimal places.
     /// On Windows, returns nothing.
     #[clap(verbatim_doc_comment)]
     LoadAverage5m,
-    /// A load average within past 15 minutes expressed as percentage, 2 decimal places.
+    /// A load average within 15 minutes expressed as percentage, 2 decimal places.
     /// On Windows, returns nothing.
     #[clap(verbatim_doc_comment)]
     LoadAverage15m,
@@ -244,7 +244,7 @@ pub enum Command {
     PhysicalCoreCount,
     /// Total CPU usage (percentage, 2 decimal places).
     TotalCpuUsage,
-    /// CPU Architecture (e.g. x86, amd64, aarch64, ...).
+    /// CPU Architecture (e.g. x86, amd64, aarch64, ...). Returns nothing if not available.
     CpuArch,
 }
 
