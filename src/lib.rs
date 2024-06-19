@@ -2,8 +2,11 @@
 //
 // This file is licensed under the MIT License (see LICENSE.md).
 
-use anyhow::{Context, Result};
+use std::collections::HashMap;
+
+use anyhow::{anyhow, bail, Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
+use regex::{Captures, Regex};
 use serde::Serialize;
 use sysinfo::{Component, Components, Cpu, Disk, Disks, System};
 
@@ -20,6 +23,12 @@ pub struct Cli {
     pub delimiter: String,
     #[command(subcommand)]
     pub cmd: Command,
+    /// String with format specifiers which will be replaced by actual values. Syntax for format
+    /// specifiers is `%<SPECIFIER>%`. To output the literal percent sign, write `%%`. If the specifier
+    /// does not exist, a corresponding error is reported. Any supplied queries to the commands are
+    /// ignored.
+    #[arg(short, long, verbatim_doc_comment)]
+    pub fmt: Option<String>,
 }
 
 #[derive(Debug, ValueEnum, Clone, Serialize)]
@@ -207,31 +216,25 @@ impl SensorQuery {
 #[derive(Subcommand, Debug)]
 pub enum Command {
     Os {
-        #[clap(required = true)]
         queries: Vec<OsQuery>,
     },
     Cpu {
         #[clap(value_parser)]
         name: String,
-        #[clap(required = true)]
         queries: Vec<CpuQuery>,
     },
     Memory {
-        #[clap(required = true)]
         queries: Vec<MemoryQuery>,
     },
     Swap {
-        #[clap(required = true)]
         queries: Vec<SwapQuery>,
     },
     Drive {
         name: String,
-        #[clap(required = true)]
         queries: Vec<DriveQuery>,
     },
     Sensor {
         name: String,
-        #[clap(required = true)]
         queries: Vec<SensorQuery>,
     },
     /// List all available sensors.
@@ -350,4 +353,130 @@ impl Command {
 
         Ok(())
     }
+}
+
+fn create_fmt_ctx(cmd: Command, specs: Vec<String>) -> Result<HashMap<String, String>> {
+    let mut ctx: HashMap<String, String> = HashMap::new();
+
+    // Empty specifier (%% in regex input results in empty match) should be replaced as '%'.
+    ctx.insert(String::new(), "%".to_string());
+    // Remove all empty specifiers from input: we're gonna use specifier names to create command
+    // queries from them.
+    let specs: Vec<String> = specs.iter().filter(|s| !s.is_empty()).cloned().collect();
+
+    let mut sys = System::new();
+
+    match cmd {
+        Command::Os { .. } => {
+            for s in specs {
+                ctx.insert(
+                    s.clone(),
+                    OsQuery::from_str(&s, true)
+                        .map_err(|_| anyhow!("unknown specifier `{}`", &s))?
+                        .exec(),
+                );
+            }
+        }
+        Command::Cpu { name, queries: _ } => {
+            sys.refresh_cpu();
+
+            std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+            sys.refresh_cpu();
+
+            let cpus = sys.cpus();
+
+            let cpu = cpus
+                .iter()
+                .find(|c| c.name() == name.as_str())
+                .with_context(|| format!("cpu '{}' not found", name))?;
+
+            for s in specs {
+                ctx.insert(
+                    s.clone(),
+                    CpuQuery::from_str(&s, true)
+                        .map_err(|_| anyhow!("unknown specifier `{}`", &s))?
+                        .exec(cpu),
+                );
+            }
+        }
+        Command::Memory { queries: _ } => {
+            sys.refresh_memory();
+
+            for s in specs {
+                ctx.insert(
+                    s.clone(),
+                    MemoryQuery::from_str(&s, true)
+                        .map_err(|_| anyhow!("unknown specifier `{}`", &s))?
+                        .exec(&sys),
+                );
+            }
+        }
+        Command::Swap { queries: _ } => {
+            sys.refresh_memory();
+
+            for s in specs {
+                ctx.insert(
+                    s.clone(),
+                    SwapQuery::from_str(&s, true)
+                        .map_err(|_| anyhow!("unknown specifier `{}`", &s))?
+                        .exec(&sys),
+                );
+            }
+        }
+        Command::Drive { name, queries: _ } => {
+            let disks = Disks::new_with_refreshed_list();
+
+            let disk = disks
+                .list()
+                .iter()
+                .find(|d| d.name() == name.as_str())
+                .with_context(|| format!("disk '{}' not found", name))?;
+
+            for s in specs {
+                ctx.insert(
+                    s.clone(),
+                    DriveQuery::from_str(&s, true)
+                        .map_err(|_| anyhow!("unknown specifier `{}`", &s))?
+                        .exec(disk),
+                );
+            }
+        }
+        Command::Sensor { name, queries: _ } => {
+            let components = Components::new_with_refreshed_list();
+
+            let sensor = components
+                .iter()
+                .find(|c| c.label() == name)
+                .with_context(|| format!("sensor '{}' not found", name))?;
+
+            for s in specs {
+                ctx.insert(
+                    s.clone(),
+                    SensorQuery::from_str(&s, true)
+                        .map_err(|_| anyhow!("unknown specifier `{}`", &s))?
+                        .exec(sensor),
+                );
+            }
+        }
+        _ => bail!("formatting is not supported for this command"),
+    }
+
+    Ok(ctx)
+}
+
+pub fn format_string(cmd: Command, fmt: String) -> Result<String> {
+    // Regex for parsing format specifiers %<SPECIFIER>%, or %% which will later yield just a percent sign.
+    let re = Regex::new(r"\%(.*?)\%")?;
+
+    let specs: Vec<String> = re
+        .captures_iter(&fmt)
+        .map(|c| c.extract())
+        .map(|(_, [m])| m.to_string())
+        .collect();
+
+    let fmt_ctx = create_fmt_ctx(cmd, specs)?;
+
+    Ok(re
+        .replace_all(&fmt, |caps: &Captures| fmt_ctx.get(&caps[1]).unwrap())
+        .to_string())
 }
