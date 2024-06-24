@@ -60,10 +60,18 @@ pub enum OsQuery {
     ReleaseId,
     /// Host name based off DNS. Returns nothing if not available.
     HostName,
+    /// Count of physical cores. If not available, returns nothing. In case there are multiple CPUs,
+    /// it will combine the physical core count of all the CPUs.
+    #[clap(verbatim_doc_comment)]
+    PhysicalCoreCount,
+    /// Total CPU usage (percentage, 2 decimal places).
+    TotalCpuUsage,
+    /// CPU Architecture (e.g. x86, amd64, aarch64, ...). Returns nothing if not available.
+    CpuArch,
 }
 
 impl OsQuery {
-    fn exec(self) -> String {
+    fn exec(self, sys: &mut System) -> String {
         match self {
             OsQuery::BootTime => System::boot_time().to_string(),
             OsQuery::LoadAverage1m => format!("{:.2}", System::load_average().one),
@@ -75,6 +83,23 @@ impl OsQuery {
             OsQuery::LongVersion => System::long_os_version().unwrap_or_default(),
             OsQuery::ReleaseId => System::distribution_id(),
             OsQuery::HostName => System::host_name().unwrap_or_default(),
+            OsQuery::PhysicalCoreCount => {
+                let count = sys
+                    .physical_core_count()
+                    .map(|c| c.to_string())
+                    .unwrap_or_default();
+
+                count.to_string()
+            }
+            OsQuery::TotalCpuUsage => {
+                sys.refresh_cpu();
+
+                std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+                sys.refresh_cpu();
+
+                format!("{:.2}", sys.global_cpu_info().cpu_usage())
+            }
+            OsQuery::CpuArch => System::cpu_arch().unwrap_or_default(),
         }
     }
 }
@@ -241,14 +266,6 @@ pub enum Command {
     ListSensors,
     /// List all available CPUs.
     ListCpus,
-    /// Count of physical cores. If not available, returns nothing. In case there are multiple CPUs,
-    /// it will combine the physical core count of all the CPUs.
-    #[clap(verbatim_doc_comment)]
-    PhysicalCoreCount,
-    /// Total CPU usage (percentage, 2 decimal places).
-    TotalCpuUsage,
-    /// CPU Architecture (e.g. x86, amd64, aarch64, ...). Returns nothing if not available.
-    CpuArch,
 }
 
 impl Command {
@@ -258,7 +275,7 @@ impl Command {
         match self {
             Command::Os { queries } => {
                 for q in queries {
-                    output.push(q.exec())
+                    output.push(q.exec(&mut sys))
                 }
             }
             Command::Cpu { name, queries } => {
@@ -331,24 +348,6 @@ impl Command {
                     output.push(c.name().to_string())
                 }
             }
-            // If the physical core count cannot be queried, an empty string is printed.
-            Command::PhysicalCoreCount => {
-                let count = sys
-                    .physical_core_count()
-                    .map(|c| c.to_string())
-                    .unwrap_or_default();
-
-                output.push(count.to_string())
-            }
-            Command::TotalCpuUsage => {
-                sys.refresh_cpu();
-
-                std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
-                sys.refresh_cpu();
-
-                output.push(format!("{:.2}", sys.global_cpu_info().cpu_usage()))
-            }
-            Command::CpuArch => output.push(System::cpu_arch().unwrap_or_default()),
         }
 
         Ok(())
@@ -373,7 +372,7 @@ fn create_fmt_ctx(cmd: Command, specs: Vec<String>) -> Result<HashMap<String, St
                     s.clone(),
                     OsQuery::from_str(&s, true)
                         .map_err(|_| anyhow!("unknown specifier `{}`", &s))?
-                        .exec(),
+                        .exec(&mut sys),
                 );
             }
         }
