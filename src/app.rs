@@ -53,16 +53,18 @@ impl Application {
         let delimiter = unescape(&cli.delimiter)
             .with_context(|| "invalid delimiter; are there any invalid escape sequences?")?;
 
-        if let Some(fmt) = &cli.fmt {
-            println!("{}", self.format_string(&cli.cmd, fmt)?);
-        } else {
-            let data = cli.cmd.exec()?;
+        for _ in 0..cli.run_times {
+            if let Some(fmt) = &cli.fmt {
+                println!("{}", self.format_string(&cli.cmd, fmt)?);
+            } else {
+                let data = cli.cmd.exec()?;
 
-            for (i, d) in data.iter().enumerate() {
-                if i < data.len() - 1 {
-                    print!("{}{}", d, delimiter)
-                } else {
-                    println!("{}", d)
+                for (i, d) in data.iter().enumerate() {
+                    if i < data.len() - 1 {
+                        print!("{}{}", d, delimiter)
+                    } else {
+                        println!("{}", d)
+                    }
                 }
             }
         }

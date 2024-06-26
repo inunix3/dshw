@@ -16,8 +16,11 @@ pub use clap::{Parser, Subcommand};
     long_about = None,
 )]
 pub struct Cli {
-    #[arg(short, long, default_value = "\n")]
+    /// How many times to query.
+    #[arg(short = 'n', long, default_value_t = 1)]
+    pub run_times: u32,
     /// Delimiter used for separating responses. Also used by `list-cpus` and `list-sensors` commands.
+    #[arg(short, long, default_value = "\n")]
     pub delimiter: String,
     #[command(subcommand)]
     pub cmd: CliCommand,
