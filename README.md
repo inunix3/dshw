@@ -15,6 +15,7 @@ Written just for fun.
     - Swap memory
     - Drives
     - OS
+    - Network
 - Multiple queries can be issued (`dshw memory total usage available free`)
 - Custom delimiter is supported (`dshw -d ', ' drive /dev/sda3 total available usage fs mount-point`)
 - Command-specific string formatting (`dshw -f 'I use %release-id% btw, my total cpu usage is %total-cpu-usage% %%' os`
@@ -71,6 +72,8 @@ Formatting is supported even by commands, that require a name/id argument:
 2719, GenuineIntel
 ```
 
+Format specifiers can be entered in any case (`%FReQUEnCy%` = `%frequency%`).
+
 Type `dshw help` to see all commands. Type, for example, `dshw help os` to see all OS related subcommands.
 
 ## Installation
@@ -86,7 +89,7 @@ default cargo dir will be) is in the PATH environment variable.
 To see all available options, pass `-h`, `--help` or `help`.
 
 ## TODO
-- [ ] Add extra functionality like network.
+- [x] Add extra functionality like network.
 - [ ] Timing: measure stats within specified interval.
 - [x] Add format option.
 

@@ -24,7 +24,7 @@ pub struct Cli {
     /// String with format specifiers which will be replaced by actual values. Syntax for format
     /// specifiers is `%<SPECIFIER>%`. To output the literal percent sign, write `%%`. If the specifier
     /// does not exist, a corresponding error is reported. Any supplied queries to the commands are
-    /// ignored.
+    /// ignored. The case does not matter (`%MAC-AddREss%` = `%mac-address%`).
     #[arg(short, long, verbatim_doc_comment)]
     pub fmt: Option<String>,
 }
@@ -52,6 +52,10 @@ pub enum CliCommand {
     Sensor {
         name: String,
         queries: Vec<SensorQuery>,
+    },
+    Network {
+        name: String,
+        queries: Vec<NetworkQuery>,
     },
     /// List all available sensors.
     ListSensors,

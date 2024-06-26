@@ -135,6 +135,17 @@ impl Application {
                     queries.iter().map(|q| Query::Sensor(q.clone())).collect(),
                 ))
             }
+            CliCommand::Network { name, queries } => {
+                let network = self
+                    .networks
+                    .get(name)
+                    .with_context(|| format!("network `{}` not found", name))?;
+
+                Ok((
+                    Box::new(NetworkCommand::new(network)),
+                    queries.iter().map(|q| Query::Network(q.clone())).collect(),
+                ))
+            }
             CliCommand::ListSensors => Ok((Box::new(ListSensorsCommand::new(self)), vec![])),
             CliCommand::ListCpus => Ok((Box::new(ListCpusCommand::new(self)), vec![])),
             CliCommand::ListNetworks => Ok((Box::new(ListNetworksCommand::new(self)), vec![])),

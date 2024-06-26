@@ -116,6 +116,25 @@ pub enum SensorQuery {
     Temperature,
 }
 
+#[derive(Debug, ValueEnum, Clone, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum NetworkQuery {
+    /// MAC address associated with the network.
+    MacAddress,
+    /// Total number of incoming errors.
+    TotalIncomingErrors,
+    /// Total number of outcoming errors.
+    TotalOutcomingErrors,
+    /// Total number of received bytes.
+    TotalReceivedBytes,
+    /// Total number of transmitted bytes.
+    TotalTransmittedBytes,
+    /// Total number of received packets.
+    TotalReceivedPackets,
+    /// Total number of transmitted packets.
+    TotalTransmittedPackets,
+}
+
 #[derive(Debug)]
 pub enum Query {
     None,
@@ -125,6 +144,7 @@ pub enum Query {
     Swap(SwapQuery),
     Drive(DriveQuery),
     Sensor(SensorQuery),
+    Network(NetworkQuery),
 }
 
 impl Query {
@@ -164,6 +184,13 @@ impl Query {
             } => Self::Sensor(
                 SensorQuery::from_str(s, IGNORE_CASE)
                     .map_err(|_| anyhow!("invalid sensor query `{}`", s))?,
+            ),
+            CliCommand::Network {
+                name: _,
+                queries: _,
+            } => Self::Network(
+                NetworkQuery::from_str(s, IGNORE_CASE)
+                    .map_err(|_| anyhow!("invalid network query `{}`", s))?,
             ),
             _ => bail!("this command does not take any arguments"),
         };

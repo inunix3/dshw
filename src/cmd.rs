@@ -4,7 +4,7 @@
 
 use crate::{app::Application, query::*};
 
-use sysinfo::{Component, Cpu, Disk, System};
+use sysinfo::{Component, Cpu, Disk, NetworkData, System};
 
 pub trait Command {
     fn exec(&mut self, q: Query) -> Vec<String>;
@@ -229,6 +229,48 @@ impl Command for SensorCommand<'_> {
 impl<'a> SensorCommand<'a> {
     pub fn new(sensor: &'a Component) -> Self {
         Self { sensor }
+    }
+}
+
+pub struct NetworkCommand<'a> {
+    network: &'a NetworkData,
+}
+
+impl Command for NetworkCommand<'_> {
+    fn exec(&mut self, q: Query) -> Vec<String> {
+        if let Query::None = q {
+            return vec![];
+        };
+
+        let s = if let Query::Network(q) = q {
+            match q {
+                NetworkQuery::MacAddress => self.network.mac_address().to_string(),
+                NetworkQuery::TotalIncomingErrors => {
+                    self.network.total_errors_on_received().to_string()
+                }
+                NetworkQuery::TotalOutcomingErrors => {
+                    self.network.total_errors_on_transmitted().to_string()
+                }
+                NetworkQuery::TotalReceivedBytes => self.network.total_received().to_string(),
+                NetworkQuery::TotalTransmittedBytes => self.network.total_transmitted().to_string(),
+                NetworkQuery::TotalReceivedPackets => {
+                    self.network.total_packets_received().to_string()
+                }
+                NetworkQuery::TotalTransmittedPackets => {
+                    self.network.total_packets_transmitted().to_string()
+                }
+            }
+        } else {
+            unreachable!()
+        };
+
+        vec![s]
+    }
+}
+
+impl<'a> NetworkCommand<'a> {
+    pub fn new(network: &'a NetworkData) -> Self {
+        Self { network }
     }
 }
 
