@@ -17,6 +17,7 @@ pub use clap::{Parser, Subcommand};
 )]
 pub struct Cli {
     #[arg(short, long, default_value = "\n")]
+    /// Delimiter used for separating responses. Also used by `list-cpus` and `list-sensors` commands.
     pub delimiter: String,
     #[command(subcommand)]
     pub cmd: CliCommand,

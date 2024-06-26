@@ -165,7 +165,7 @@ impl Query {
                 SensorQuery::from_str(s, IGNORE_CASE)
                     .map_err(|_| anyhow!("invalid sensor query `{}`", s))?,
             ),
-            _ => bail!("this command does not take any arguments (queries)"),
+            _ => bail!("this command does not take any arguments"),
         };
 
         Ok(q)
