@@ -8,10 +8,10 @@ use crate::{
     query::Query,
 };
 
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result};
 use once_cell::unsync::Lazy;
 use regex::{Captures, Regex};
-use sysinfo::{Components, Disks, System};
+use sysinfo::{Components, Disks, Networks, System};
 use unescaper::unescape;
 
 use std::collections::HashMap;
@@ -23,6 +23,7 @@ pub struct Application {
     pub sys: System,
     pub drives: Lazy<Disks>,
     pub sensors: Lazy<Components>,
+    pub networks: Lazy<Networks>,
 }
 
 impl Default for Application {
@@ -31,6 +32,7 @@ impl Default for Application {
             sys: System::new(),
             drives: Lazy::new(Disks::new_with_refreshed_list),
             sensors: Lazy::new(Components::new_with_refreshed_list),
+            networks: Lazy::new(Networks::new_with_refreshed_list),
         }
     }
 }
@@ -71,24 +73,13 @@ impl Application {
     pub fn command_from_cli<'a>(
         &'a mut self,
         cli_cmd: &CliCommand,
-        fmt_given: bool,
     ) -> Result<(Box<dyn Command + 'a>, Vec<Query>)> {
         match cli_cmd {
-            CliCommand::Os { queries } => {
-                if !fmt_given {
-                    ensure!(!queries.is_empty(), "one or more queries are required");
-                }
-
-                Ok((
-                    Box::new(OsCommand::new(self)),
-                    queries.iter().map(|q| Query::Os(q.clone())).collect(),
-                ))
-            }
+            CliCommand::Os { queries } => Ok((
+                Box::new(OsCommand::new(self)),
+                queries.iter().map(|q| Query::Os(q.clone())).collect(),
+            )),
             CliCommand::Cpu { name, queries } => {
-                if !fmt_given {
-                    ensure!(!queries.is_empty(), "one or more queries are required");
-                }
-
                 self.refresh_cpus();
 
                 let cpu = self
@@ -104,10 +95,6 @@ impl Application {
                 ))
             }
             CliCommand::Memory { queries } => {
-                if !fmt_given {
-                    ensure!(!queries.is_empty(), "one or more queries are required");
-                }
-
                 self.sys.refresh_memory();
 
                 Ok((
@@ -116,10 +103,6 @@ impl Application {
                 ))
             }
             CliCommand::Swap { queries } => {
-                if !fmt_given {
-                    ensure!(!queries.is_empty(), "one or more queries are required");
-                }
-
                 self.sys.refresh_memory();
 
                 Ok((
@@ -128,10 +111,6 @@ impl Application {
                 ))
             }
             CliCommand::Drive { name, queries } => {
-                if !fmt_given {
-                    ensure!(!queries.is_empty(), "one or more queries are required");
-                }
-
                 let drive = self
                     .drives
                     .list()
@@ -145,10 +124,6 @@ impl Application {
                 ))
             }
             CliCommand::Sensor { name, queries } => {
-                if !fmt_given {
-                    ensure!(!queries.is_empty(), "one or more queries are required");
-                }
-
                 let sensor = self
                     .sensors
                     .iter()
@@ -162,6 +137,7 @@ impl Application {
             }
             CliCommand::ListSensors => Ok((Box::new(ListSensorsCommand::new(self)), vec![])),
             CliCommand::ListCpus => Ok((Box::new(ListCpusCommand::new(self)), vec![])),
+            CliCommand::ListNetworks => Ok((Box::new(ListNetworksCommand::new(self)), vec![])),
         }
     }
 
@@ -197,7 +173,7 @@ impl Application {
             queries.push(Query::from_str(cli_cmd, s)?)
         }
 
-        let (mut cmd, _) = self.command_from_cli(cli_cmd, true)?;
+        let (mut cmd, _) = self.command_from_cli(cli_cmd)?;
 
         queries.into_iter().zip(specs).for_each(|(q, s)| {
             ctx.insert(s.to_string(), cmd.exec(q).first().unwrap().to_string());

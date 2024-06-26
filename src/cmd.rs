@@ -16,6 +16,10 @@ pub struct OsCommand<'a> {
 
 impl Command for OsCommand<'_> {
     fn exec(&mut self, q: Query) -> Vec<String> {
+        if let Query::None = q {
+            return vec![];
+        };
+
         let s = if let Query::Os(q) = q {
             match q {
                 OsQuery::BootTime => System::boot_time().to_string(),
@@ -68,6 +72,10 @@ pub struct CpuCommand<'a> {
 
 impl Command for CpuCommand<'_> {
     fn exec(&mut self, q: Query) -> Vec<String> {
+        if let Query::None = q {
+            return vec![];
+        };
+
         let s = if let Query::Cpu(q) = q {
             match q {
                 CpuQuery::Usage => format!("{:.2}", self.cpu.cpu_usage()),
@@ -95,6 +103,10 @@ pub struct MemoryCommand<'a> {
 
 impl Command for MemoryCommand<'_> {
     fn exec(&mut self, q: Query) -> Vec<String> {
+        if let Query::None = q {
+            return vec![];
+        };
+
         let s = if let Query::Memory(q) = q {
             match q {
                 MemoryQuery::Usage => self.app.sys.used_memory(),
@@ -123,6 +135,10 @@ pub struct SwapCommand<'a> {
 
 impl Command for SwapCommand<'_> {
     fn exec(&mut self, q: Query) -> Vec<String> {
+        if let Query::None = q {
+            return vec![];
+        };
+
         let s = if let Query::Swap(q) = q {
             match q {
                 SwapQuery::Usage => self.app.sys.used_swap(),
@@ -150,6 +166,10 @@ pub struct DriveCommand<'a> {
 
 impl Command for DriveCommand<'_> {
     fn exec(&mut self, q: Query) -> Vec<String> {
+        if let Query::None = q {
+            return vec![];
+        };
+
         let total_space = self.drive.total_space();
         let avail_space = self.drive.available_space();
         let used_space = total_space - avail_space;
@@ -184,6 +204,10 @@ pub struct SensorCommand<'a> {
 
 impl Command for SensorCommand<'_> {
     fn exec(&mut self, q: Query) -> Vec<String> {
+        if let Query::None = q {
+            return vec![];
+        };
+
         let s = if let Query::Sensor(q) = q {
             match q {
                 SensorQuery::CriticalTemp => self
@@ -249,6 +273,28 @@ impl Command for ListSensorsCommand<'_> {
 }
 
 impl<'a> ListSensorsCommand<'a> {
+    pub fn new(app: &'a mut Application) -> Self {
+        Self { app }
+    }
+}
+
+pub struct ListNetworksCommand<'a> {
+    app: &'a mut Application,
+}
+
+impl Command for ListNetworksCommand<'_> {
+    fn exec(&mut self, _q: Query) -> Vec<String> {
+        let mut output: Vec<String> = vec![];
+
+        for (interface_name, _) in &*self.app.networks {
+            output.push(interface_name.to_string())
+        }
+
+        output
+    }
+}
+
+impl<'a> ListNetworksCommand<'a> {
     pub fn new(app: &'a mut Application) -> Self {
         Self { app }
     }

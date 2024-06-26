@@ -57,6 +57,8 @@ pub enum CliCommand {
     ListSensors,
     /// List all available CPUs.
     ListCpus,
+    /// List all available network interfaces.
+    ListNetworks,
 }
 
 impl CliCommand {
@@ -64,7 +66,7 @@ impl CliCommand {
         let mut output: Vec<String> = vec![];
         let mut app = Application::new();
 
-        let (mut cmd, queries) = app.command_from_cli(self, false)?;
+        let (mut cmd, queries) = app.command_from_cli(self)?;
 
         if !queries.is_empty() {
             for q in queries {
