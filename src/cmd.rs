@@ -2,7 +2,11 @@
 //
 // This file is licensed under the MIT License (see LICENSE.md).
 
-use crate::{app::Application, query::*};
+use crate::{
+    app::Application,
+    query::*,
+    units::{DataUnit, DataValue},
+};
 
 use sysinfo::{Component, Cpu, Disk, NetworkData, System};
 
@@ -96,6 +100,7 @@ impl<'a> CpuCommand<'a> {
 
 pub struct MemoryCommand<'a> {
     app: &'a mut Application,
+    data_unit: DataUnit,
 }
 
 impl Command for MemoryCommand<'_> {
@@ -104,30 +109,32 @@ impl Command for MemoryCommand<'_> {
             return vec![];
         };
 
-        let s = if let Query::Memory(q) = q {
+        let value = if let Query::Memory(q) = q {
             match q {
-                MemoryQuery::Usage => self.app.sys.used_memory(),
-                MemoryQuery::Total => self.app.sys.total_memory(),
-                MemoryQuery::Available => self.app.sys.available_memory(),
-                MemoryQuery::Free => self.app.sys.free_memory(),
+                MemoryQuery::Usage => self.app.sys.used_memory() as f64,
+                MemoryQuery::Total => self.app.sys.total_memory() as f64,
+                MemoryQuery::Available => self.app.sys.available_memory() as f64,
+                MemoryQuery::Free => self.app.sys.free_memory() as f64,
             }
-            .to_string()
         } else {
             unreachable!()
         };
 
-        vec![s]
+        let value = DataValue::from_bytes(value, self.data_unit).value_str();
+
+        vec![value]
     }
 }
 
 impl<'a> MemoryCommand<'a> {
-    pub fn new(app: &'a mut Application) -> Self {
-        Self { app }
+    pub fn new(app: &'a mut Application, data_unit: DataUnit) -> Self {
+        Self { app, data_unit }
     }
 }
 
 pub struct SwapCommand<'a> {
     app: &'a mut Application,
+    data_unit: DataUnit,
 }
 
 impl Command for SwapCommand<'_> {
@@ -136,29 +143,31 @@ impl Command for SwapCommand<'_> {
             return vec![];
         };
 
-        let s = if let Query::Swap(q) = q {
+        let value = if let Query::Swap(q) = q {
             match q {
-                SwapQuery::Usage => self.app.sys.used_swap(),
-                SwapQuery::Total => self.app.sys.total_swap(),
-                SwapQuery::Available => self.app.sys.free_swap(),
+                SwapQuery::Usage => self.app.sys.used_swap() as f64,
+                SwapQuery::Total => self.app.sys.total_swap() as f64,
+                SwapQuery::Available => self.app.sys.free_swap() as f64,
             }
-            .to_string()
         } else {
             unreachable!()
         };
 
-        vec![s]
+        let value = DataValue::from_bytes(value, self.data_unit).value_str();
+
+        vec![value]
     }
 }
 
 impl<'a> SwapCommand<'a> {
-    pub fn new(app: &'a mut Application) -> Self {
-        Self { app }
+    pub fn new(app: &'a mut Application, data_unit: DataUnit) -> Self {
+        Self { app, data_unit }
     }
 }
 
 pub struct DriveCommand<'a> {
     drive: &'a Disk,
+    data_unit: DataUnit,
 }
 
 impl Command for DriveCommand<'_> {
@@ -173,13 +182,19 @@ impl Command for DriveCommand<'_> {
 
         let s = if let Query::Drive(q) = q {
             match q {
-                DriveQuery::Usage => used_space.to_string(),
+                DriveQuery::Usage => {
+                    DataValue::from_bytes(used_space as f64, self.data_unit).value_str()
+                }
                 DriveQuery::Fs => self.drive.file_system().to_string_lossy().to_string(),
                 DriveQuery::IsRemovable => (self.drive.is_removable() as i32).to_string(),
                 DriveQuery::Kind => self.drive.kind().to_string(),
                 DriveQuery::MountPoint => self.drive.mount_point().to_string_lossy().to_string(),
-                DriveQuery::Total => total_space.to_string(),
-                DriveQuery::Available => avail_space.to_string(),
+                DriveQuery::Total => {
+                    DataValue::from_bytes(total_space as f64, self.data_unit).value_str()
+                }
+                DriveQuery::Available => {
+                    DataValue::from_bytes(avail_space as f64, self.data_unit).value_str()
+                }
             }
         } else {
             unreachable!()
@@ -190,8 +205,8 @@ impl Command for DriveCommand<'_> {
 }
 
 impl<'a> DriveCommand<'a> {
-    pub fn new(drive: &'a Disk) -> Self {
-        Self { drive }
+    pub fn new(drive: &'a Disk, data_unit: DataUnit) -> Self {
+        Self { drive, data_unit }
     }
 }
 
@@ -231,6 +246,7 @@ impl<'a> SensorCommand<'a> {
 
 pub struct NetworkCommand<'a> {
     network: &'a NetworkData,
+    data_unit: DataUnit,
 }
 
 impl Command for NetworkCommand<'_> {
@@ -248,8 +264,16 @@ impl Command for NetworkCommand<'_> {
                 NetworkQuery::TotalOutcomingErrors => {
                     self.network.total_errors_on_transmitted().to_string()
                 }
-                NetworkQuery::TotalReceivedBytes => self.network.total_received().to_string(),
-                NetworkQuery::TotalTransmittedBytes => self.network.total_transmitted().to_string(),
+                NetworkQuery::TotalReceivedData => {
+                    let received = self.network.total_received();
+
+                    DataValue::from_bytes(received as f64, self.data_unit).value_str()
+                }
+                NetworkQuery::TotalTransmittedData => {
+                    let transmitted = self.network.total_transmitted();
+
+                    DataValue::from_bytes(transmitted as f64, self.data_unit).value_str()
+                }
                 NetworkQuery::TotalReceivedPackets => {
                     self.network.total_packets_received().to_string()
                 }
@@ -266,8 +290,8 @@ impl Command for NetworkCommand<'_> {
 }
 
 impl<'a> NetworkCommand<'a> {
-    pub fn new(network: &'a NetworkData) -> Self {
-        Self { network }
+    pub fn new(network: &'a NetworkData, data_unit: DataUnit) -> Self {
+        Self { network, data_unit }
     }
 }
 

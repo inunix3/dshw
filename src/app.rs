@@ -69,8 +69,10 @@ impl Application {
 
     pub fn command_from_cli<'a>(
         &'a mut self,
-        cli_cmd: &CliCommand,
+        cli: &Cli,
     ) -> Result<(Box<dyn Command + 'a>, Vec<Query>)> {
+        let cli_cmd = &cli.cmd;
+
         match cli_cmd {
             CliCommand::Os { queries } => Ok((
                 Box::new(OsCommand::new(self)),
@@ -95,7 +97,7 @@ impl Application {
                 self.sys.refresh_memory();
 
                 Ok((
-                    Box::new(MemoryCommand::new(self)),
+                    Box::new(MemoryCommand::new(self, cli.data_unit)),
                     queries.iter().map(|q| Query::Memory(q.clone())).collect(),
                 ))
             }
@@ -103,7 +105,7 @@ impl Application {
                 self.sys.refresh_memory();
 
                 Ok((
-                    Box::new(SwapCommand::new(self)),
+                    Box::new(SwapCommand::new(self, cli.data_unit)),
                     queries.iter().map(|q| Query::Swap(q.clone())).collect(),
                 ))
             }
@@ -116,7 +118,7 @@ impl Application {
                     .with_context(|| format!("drive '{}' not found", name))?;
 
                 Ok((
-                    Box::new(DriveCommand::new(drive)),
+                    Box::new(DriveCommand::new(drive, cli.data_unit)),
                     queries.iter().map(|q| Query::Drive(q.clone())).collect(),
                 ))
             }
@@ -139,7 +141,7 @@ impl Application {
                     .with_context(|| format!("network `{}` not found", name))?;
 
                 Ok((
-                    Box::new(NetworkCommand::new(network)),
+                    Box::new(NetworkCommand::new(network, cli.data_unit)),
                     queries.iter().map(|q| Query::Network(q.clone())).collect(),
                 ))
             }
@@ -161,9 +163,9 @@ impl Application {
             .with_context(|| "invalid delimiter; are there any invalid escape sequences?")?;
 
         if let Some(fmt) = &cli.fmt {
-            println!("{}", self.format_string(&cli.cmd, fmt)?);
+            println!("{}", self.format_string(cli, fmt)?);
         } else {
-            let data = cli.cmd.exec()?;
+            let data = cli.cmd.exec(cli)?;
 
             for (i, d) in data.iter().enumerate() {
                 if i < data.len() - 1 {
@@ -177,7 +179,7 @@ impl Application {
         Ok(())
     }
 
-    fn format_string(&mut self, cmd: &CliCommand, fmt: &str) -> Result<String> {
+    fn format_string(&mut self, cli: &Cli, fmt: &str) -> Result<String> {
         // Regex for parsing format specifiers %<SPECIFIER>%, or %% which yields just a percent sign.
         let re = Regex::new(r"\%(.*?)\%")?;
 
@@ -187,14 +189,14 @@ impl Application {
             .map(|(_, [r#match])| r#match.to_string())
             .collect();
 
-        let fmt_ctx = self.create_fmt_ctx(cmd, specs)?;
+        let fmt_ctx = self.create_fmt_ctx(cli, specs)?;
 
         Ok(re
             .replace_all(fmt, |caps: &Captures| fmt_ctx.get(&caps[1]).unwrap())
             .to_string())
     }
 
-    fn create_fmt_ctx(&mut self, cli_cmd: &CliCommand, specs: Vec<String>) -> Result<FmtContext> {
+    fn create_fmt_ctx(&mut self, cli: &Cli, specs: Vec<String>) -> Result<FmtContext> {
         let mut ctx: FmtContext = HashMap::new();
 
         // Empty specifier (%% in regex input results in empty match) should be replaced as '%'.
@@ -206,10 +208,10 @@ impl Application {
         let mut queries: Vec<Query> = vec![];
 
         for s in &specs {
-            queries.push(Query::from_str(cli_cmd, s)?)
+            queries.push(Query::from_str(&cli.cmd, s)?)
         }
 
-        let (mut cmd, _) = self.command_from_cli(cli_cmd)?;
+        let (mut cmd, _) = self.command_from_cli(cli)?;
 
         queries.into_iter().zip(specs).for_each(|(q, s)| {
             ctx.insert(s.to_string(), cmd.exec(q).first().unwrap().to_string());

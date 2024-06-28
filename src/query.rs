@@ -63,31 +63,31 @@ pub enum CpuQuery {
 #[derive(Debug, ValueEnum, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum MemoryQuery {
-    /// Total memory usage (bytes).
+    /// Total memory usage.
     Usage,
-    /// Total memory capacity (bytes).
+    /// Total memory capacity.
     Total,
-    /// Reusable memory (bytes). On FreeBSD, it's the same as `free`.
+    /// Reusable memory. On FreeBSD, it's the same as `free`.
     Available,
-    /// Unallocated memory (bytes). On Windows, it's the same as `available`.
+    /// Unallocated memory. On Windows, it's the same as `available`.
     Free,
 }
 
 #[derive(Debug, ValueEnum, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SwapQuery {
-    /// Total swap usage (bytes).
+    /// Total swap usage.
     Usage,
-    /// Total swap capacity (bytes).
+    /// Total swap capacity.
     Total,
-    /// Available swap memory (bytes).
+    /// Available swap memory.
     Available,
 }
 
 #[derive(Debug, ValueEnum, Clone, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum DriveQuery {
-    /// Total used drive space (bytes).
+    /// Total used drive space.
     Usage,
     /// Drive's filesystem name.
     Fs,
@@ -97,9 +97,9 @@ pub enum DriveQuery {
     Kind,
     /// The path where the drive is mounted.
     MountPoint,
-    /// Total space (bytes).
+    /// Total space.
     Total,
-    /// Total available space (bytes).
+    /// Total available space.
     Available,
 }
 
@@ -125,10 +125,10 @@ pub enum NetworkQuery {
     TotalIncomingErrors,
     /// Total number of outcoming errors.
     TotalOutcomingErrors,
-    /// Total number of received bytes.
-    TotalReceivedBytes,
-    /// Total number of transmitted bytes.
-    TotalTransmittedBytes,
+    /// Total number of received data.
+    TotalReceivedData,
+    /// Total number of transmitted data.
+    TotalTransmittedData,
     /// Total number of received packets.
     TotalReceivedPackets,
     /// Total number of transmitted packets.

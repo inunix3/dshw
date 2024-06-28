@@ -2,7 +2,7 @@
 //
 // This file is licensed under the MIT License (see LICENSE.md).
 
-use crate::{app::Application, query::*};
+use crate::{app::Application, query::*, units::DataUnit};
 
 use anyhow::Result;
 pub use clap::{Parser, Subcommand};
@@ -26,6 +26,9 @@ pub struct Cli {
     /// Delimiter used for separating responses. Also used by `list-cpus` and `list-sensors` commands.
     #[arg(short, long, default_value = "\n")]
     pub delimiter: String,
+    /// The unit of information used by memory, swap, drive, and network commands.
+    #[arg(short = 'u', long, default_value_t = DataUnit::Bytes)]
+    pub data_unit: DataUnit,
     #[command(subcommand)]
     pub cmd: CliCommand,
     /// String with format specifiers which will be replaced by actual values. Syntax for format
@@ -73,11 +76,11 @@ pub enum CliCommand {
 }
 
 impl CliCommand {
-    pub fn exec(&self) -> Result<Vec<String>> {
+    pub fn exec(&self, cli: &Cli) -> Result<Vec<String>> {
         let mut output: Vec<String> = vec![];
         let mut app = Application::new();
 
-        let (mut cmd, queries) = app.command_from_cli(self)?;
+        let (mut cmd, queries) = app.command_from_cli(cli)?;
 
         if !queries.is_empty() {
             for q in queries {
