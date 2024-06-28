@@ -3,10 +3,8 @@
 // This file is licensed under the MIT License (see LICENSE.md).
 
 use clap::ValueEnum;
-use serde::Serialize;
 
-#[derive(Debug, ValueEnum, Clone, Copy, Serialize, strum_macros::Display)]
-#[serde(rename_all = "lowercase")]
+#[derive(Debug, ValueEnum, Clone, Copy, strum_macros::Display)]
 pub enum DataUnit {
     #[strum(serialize = "bits")]
     Bits,

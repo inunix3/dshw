@@ -6,10 +6,8 @@ use crate::cli::CliCommand;
 
 use anyhow::{anyhow, bail, Result};
 use clap::ValueEnum;
-use serde::Serialize;
 
-#[derive(Debug, ValueEnum, Clone, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, ValueEnum, Clone)]
 pub enum OsQuery {
     /// Time when the system booted since UNIX epoch (seconds).
     BootTime,
@@ -47,8 +45,7 @@ pub enum OsQuery {
     CpuArch,
 }
 
-#[derive(Debug, ValueEnum, Clone, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, ValueEnum, Clone)]
 pub enum CpuQuery {
     /// CPU usage (percentage, 2 decimal places).
     Usage,
@@ -60,8 +57,7 @@ pub enum CpuQuery {
     VendorId,
 }
 
-#[derive(Debug, ValueEnum, Clone, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, ValueEnum, Clone)]
 pub enum MemoryQuery {
     /// Total memory usage.
     Usage,
@@ -73,8 +69,7 @@ pub enum MemoryQuery {
     Free,
 }
 
-#[derive(Debug, ValueEnum, Clone, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, ValueEnum, Clone)]
 pub enum SwapQuery {
     /// Total swap usage.
     Usage,
@@ -84,8 +79,7 @@ pub enum SwapQuery {
     Available,
 }
 
-#[derive(Debug, ValueEnum, Clone, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, ValueEnum, Clone)]
 pub enum DriveQuery {
     /// Total used drive space.
     Usage,
@@ -103,8 +97,7 @@ pub enum DriveQuery {
     Available,
 }
 
-#[derive(Debug, ValueEnum, Clone, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, ValueEnum, Clone)]
 pub enum SensorQuery {
     /// Sensor's critical temperature (Celsius, 2 decimal places). If
     /// not available, returns nothing
@@ -116,8 +109,7 @@ pub enum SensorQuery {
     Temperature,
 }
 
-#[derive(Debug, ValueEnum, Clone, Serialize)]
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, ValueEnum, Clone)]
 pub enum NetworkQuery {
     /// MAC address associated with the network.
     MacAddress,
