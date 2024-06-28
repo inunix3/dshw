@@ -89,13 +89,6 @@ default cargo dir will be) is in the PATH environment variable.
 
 To see all available options, pass `-h`, `--help` or `help`.
 
-## TODO
-- [x] Add extra functionality like network.
-- [x] Timing: measure stats within specified interval.
-- [x] Add format option.
-
-More to come...
-
 ## Contribution
 If you have found a problem or have a suggestion, feel free to open an issue or send a pull request.
 I'd appreciate it.
