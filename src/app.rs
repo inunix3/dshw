@@ -47,7 +47,7 @@ impl Application {
             return self.exec_cmd(&cli);
         }
 
-        let mut cnt = 0;
+        let mut cnt = 0u64;
         loop {
             if cli.run_times > 0 && cnt >= cli.run_times {
                 break;
@@ -149,6 +149,13 @@ impl Application {
         }
     }
 
+    pub fn refresh_cpus(&mut self) {
+        self.sys.refresh_cpu();
+
+        std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+        self.sys.refresh_cpu();
+    }
+
     fn exec_cmd(&mut self, cli: &Cli) -> Result<()> {
         let delimiter = unescape(&cli.delimiter)
             .with_context(|| "invalid delimiter; are there any invalid escape sequences?")?;
@@ -168,13 +175,6 @@ impl Application {
         }
 
         Ok(())
-    }
-
-    fn refresh_cpus(&mut self) {
-        self.sys.refresh_cpu();
-
-        std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
-        self.sys.refresh_cpu();
     }
 
     fn format_string(&mut self, cmd: &CliCommand, fmt: &str) -> Result<String> {

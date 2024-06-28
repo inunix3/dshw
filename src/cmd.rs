@@ -43,10 +43,7 @@ impl Command for OsCommand<'_> {
                     count.to_string()
                 }
                 OsQuery::TotalCpuUsage => {
-                    self.app.sys.refresh_cpu();
-
-                    std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
-                    self.app.sys.refresh_cpu();
+                    self.app.refresh_cpus();
 
                     format!("{:.2}", self.app.sys.global_cpu_info().cpu_usage())
                 }
