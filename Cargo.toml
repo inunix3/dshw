@@ -2,7 +2,7 @@
 name = "dshw"
 description = "A dead simple CLI program to query information about system and hardware."
 authors = ["inunix3 <inu.nix3@gmail.com>"]
-keywords = ["system-information", "disk", "cpu", "memory"]
+keywords = ["system-information"]
 categories = ["command-line-utilities"]
 license = "MIT"
 version = "0.2.0"
