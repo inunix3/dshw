@@ -16,8 +16,12 @@ pub use clap::{Parser, Subcommand};
     long_about = None,
 )]
 pub struct Cli {
-    /// How many times to query.
-    #[arg(short = 'n', long, default_value_t = 1)]
+    /// Interval between commands, ignored if --run_times is 1. For format see https://docs.rs/humantime/2.1.0/humantime/fn.parse_duration.html.
+    #[arg(short = 'I', long)]
+    pub interval: Option<humantime::Duration>,
+    /// How many times to run the command. Specifying 0 will cause commands to run infinitely until
+    /// the user manually terminates the program.
+    #[arg(short = 'n', long, default_value_t = 1, verbatim_doc_comment)]
     pub run_times: u32,
     /// Delimiter used for separating responses. Also used by `list-cpus` and `list-sensors` commands.
     #[arg(short, long, default_value = "\n")]

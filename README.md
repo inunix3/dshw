@@ -20,6 +20,7 @@ Written just for fun.
 - Custom delimiter is supported (`dshw -d ', ' drive /dev/sda3 total available usage fs mount-point`)
 - Command-specific string formatting (`dshw -f 'I use %release-id% btw, my total cpu usage is %total-cpu-usage% %%' os`
 may yield `I use arch btw, my total cpu usage is 2.15 %`)
+- Specify how many times to run and set interval between commands (`dshw -I 1s -n 5 os total-cpu-usage`).
 
 ## Usage
 To print total and available memory:

@@ -14,7 +14,7 @@ use regex::{Captures, Regex};
 use sysinfo::{Components, Disks, Networks, System};
 use unescaper::unescape;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, thread};
 
 type FmtContext = HashMap<String, String>;
 
@@ -42,30 +42,25 @@ impl Application {
         Default::default()
     }
 
-    fn refresh_cpus(&mut self) {
-        self.sys.refresh_cpu();
-
-        std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
-        self.sys.refresh_cpu();
-    }
-
     pub fn run(mut self, cli: Cli) -> Result<()> {
-        let delimiter = unescape(&cli.delimiter)
-            .with_context(|| "invalid delimiter; are there any invalid escape sequences?")?;
+        if cli.run_times == 1 {
+            return self.exec_cmd(&cli);
+        }
 
-        for _ in 0..cli.run_times {
-            if let Some(fmt) = &cli.fmt {
-                println!("{}", self.format_string(&cli.cmd, fmt)?);
-            } else {
-                let data = cli.cmd.exec()?;
+        let mut cnt = 0;
+        loop {
+            if cli.run_times > 0 && cnt >= cli.run_times {
+                break;
+            }
 
-                for (i, d) in data.iter().enumerate() {
-                    if i < data.len() - 1 {
-                        print!("{}{}", d, delimiter)
-                    } else {
-                        println!("{}", d)
-                    }
-                }
+            self.exec_cmd(&cli)?;
+
+            if let Some(i) = cli.interval {
+                thread::sleep(*i);
+            }
+
+            if cli.run_times != 0 {
+                cnt += 1;
             }
         }
 
@@ -152,6 +147,34 @@ impl Application {
             CliCommand::ListCpus => Ok((Box::new(ListCpusCommand::new(self)), vec![])),
             CliCommand::ListNetworks => Ok((Box::new(ListNetworksCommand::new(self)), vec![])),
         }
+    }
+
+    fn exec_cmd(&mut self, cli: &Cli) -> Result<()> {
+        let delimiter = unescape(&cli.delimiter)
+            .with_context(|| "invalid delimiter; are there any invalid escape sequences?")?;
+
+        if let Some(fmt) = &cli.fmt {
+            println!("{}", self.format_string(&cli.cmd, fmt)?);
+        } else {
+            let data = cli.cmd.exec()?;
+
+            for (i, d) in data.iter().enumerate() {
+                if i < data.len() - 1 {
+                    print!("{}{}", d, delimiter)
+                } else {
+                    println!("{}", d)
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn refresh_cpus(&mut self) {
+        self.sys.refresh_cpu();
+
+        std::thread::sleep(sysinfo::MINIMUM_CPU_UPDATE_INTERVAL);
+        self.sys.refresh_cpu();
     }
 
     fn format_string(&mut self, cmd: &CliCommand, fmt: &str) -> Result<String> {

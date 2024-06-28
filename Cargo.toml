@@ -13,6 +13,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.86"
 clap = { version = "4.5.7", features = ["derive"] }
+humantime = "2.1.0"
 once_cell = "1.19.0"
 regex = "1.10.5"
 serde = { version = "1.0.203", features = ["derive"] }
