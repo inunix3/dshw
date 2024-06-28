@@ -91,7 +91,7 @@ To see all available options, pass `-h`, `--help` or `help`.
 
 ## TODO
 - [x] Add extra functionality like network.
-- [ ] Timing: measure stats within specified interval.
+- [x] Timing: measure stats within specified interval.
 - [x] Add format option.
 
 More to come...
